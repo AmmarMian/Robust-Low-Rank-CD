@@ -1,4 +1,4 @@
-# Wavelet packet adapted to High-resolution SAR images
+# Robust Low-Rank Change Detection for Heterogeneous SAR images
 
 The work here correspond to a code for change detection for SAr images exploiting Low-rank structure and non-Gaussian assumptions.
 It corresponds to a simulation done for a proposed IGARSS paper.
