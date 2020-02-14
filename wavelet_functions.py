@@ -52,7 +52,7 @@ def gbellmf(x, a, b, c):
 
 
 def decompose_image_wavelet(image, bandwith, range_resolution, azimuth_resolution, center_frequency,
-                            R, L, d_1, d_2):
+                            R, L, d_1, d_2, show_decomposition=False, dyn_dB=50, shift=True):
     # Physical parameters
     number_pixels_range = image.shape[1]
     number_pixels_azimuth = image.shape[0]
@@ -67,21 +67,55 @@ def decompose_image_wavelet(image, bandwith, range_resolution, azimuth_resolutio
     𝚯 = np.arctan2(KY, KX)
 
     # Doing decomposition
-    spectre_to_decompose = np.fft.fft2(image)
+    if shift:
+        spectre_to_decompose = np.fft.fftshift(np.fft.fft2(image))
+    else:
+        spectre_to_decompose = np.fft.fft2(image)
     𝐂 = np.zeros((number_pixels_azimuth, number_pixels_range, R*L), dtype=complex)
     κ_B = 𝚱.max() - 𝚱.min()
     θ_B = 𝚯.max() - 𝚯.min()
     width_κ = κ_B/R
     width_θ = θ_B/L
+
+    if show_decomposition:
+        import matplotlib.pyplot as plt
+        plt.figure()
+        toplot = 20*np.log10(np.abs(image))
+        plt.imshow(toplot, cmap='gray', aspect='auto', vmin=toplot.max()-dyn_dB)
+        plt.title('Image to decompose')
+
+        plt.figure()
+        toplot = 20*np.log10(np.abs(spectre_to_decompose))
+        plt.imshow(toplot, cmap='gray', aspect='auto', vmin=toplot.max()-dyn_dB)
+        plt.title('Spectre of image')
+
+
+        fig_spectres, axes_spectres = plt.subplots(R, L, figsize=(20,17))
+        fig_images, axes_images = plt.subplots(R, L, figsize=(20,17))
+        fig_spectres.suptitle("Signal times wavelet", fontsize="x-large")
+        fig_images.suptitle("Wavelet decomposition", fontsize="x-large")
+
     for m in range(R):
         for n in range(L):
-            center_κ = 𝚱.min() + m*κ_B
-            center_θ = 𝚯.min() + n*θ_B
+            center_κ = 𝚱.min() + width_κ/2 +  m*width_κ
+            center_θ = 𝚯.min() + width_θ/2 + n*width_θ
 
-            H_mn_d1d2 = gbellmf(𝚱, width_κ, d_1, center_κ) * \
-                        gbellmf(𝚯, width_θ, d_2, center_θ)
+            H_mn_d1d2 = gbellmf(𝚱, width_κ/2, d_1, center_κ) * \
+                        gbellmf(𝚯, width_θ/2, d_2, center_θ)
             Ψ_mn_d1d2 = spectre_to_decompose * H_mn_d1d2
-            𝐂[:,:,m*L + n] = np.fft.ifft2(Ψ_mn_d1d2)
+
+            if shift:
+                𝐂[:,:,m*L + n] = np.fft.ifft2(np.fft.fftshift(Ψ_mn_d1d2))
+            else:
+                𝐂[:,:,m*L + n] = np.fft.ifft2(Ψ_mn_d1d2)
+
+            if show_decomposition:
+                toplot = 20*np.log10(np.abs(Ψ_mn_d1d2))
+                axes_spectres[m,n].imshow(toplot, cmap='gray', aspect='auto', vmin=toplot.max()-dyn_dB)
+                axes_spectres[m,n].set_axis_off()
+                toplot = 20*np.log10(np.abs(𝐂[:,:,m*L + n]))
+                axes_images[m,n].imshow(toplot, cmap='gray', aspect='auto', vmin=toplot.max()-dyn_dB)
+                axes_images[m,n].set_axis_off()
 
     return 𝐂
 
